@@ -50,8 +50,8 @@ def home():
     prediction = None 
     confidence = None 
     
-    if request.method == "POST": 
-        print("📷 Image received") 
+    if request.method == "POST":
+    print("🔥 POST STARTED", flush=True) 
         
         # Safe check to see if the file exists in the request
         if "image" not in request.files or request.files["image"].filename == "":
