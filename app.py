@@ -1,5 +1,6 @@
 import os
 import time
+import psutil
 import numpy as np
 
 from flask import Flask, render_template, request
@@ -21,11 +22,25 @@ app = Flask(__name__)
 device = torch.device("cpu")
 
 # ==========================================
+# RAM Monitor
+# ==========================================
+process = psutil.Process(os.getpid())
+
+def ram(stage):
+    print(
+        f"[{stage}] RAM = {process.memory_info().rss / 1024 / 1024:.1f} MB",
+        flush=True
+    )
+
+# ==========================================
 # Load trained model
 # ==========================================
 print("Loading model...", flush=True)
+ram("Before loading model")
 
 checkpoint = torch.load("astro_model_v2.pth", map_location=device)
+
+ram("After checkpoint")
 
 classes = checkpoint["classes"]
 num_classes = checkpoint["num_classes"]
@@ -35,37 +50,23 @@ model.load_state_dict(checkpoint["model_state_dict"])
 model.to(device)
 model.eval()
 
+ram("After model")
+
 print("✅ AI model loaded successfully!", flush=True)
 print("Torch version:", torch.__version__, flush=True)
-
-print("Testing torch...", flush=True)
-
-start = time.time()
-
-x = torch.rand((3, 224, 224))
-
-print("Created random tensor", flush=True)
-
-x = x.float()
-
-print("Converted to float", flush=True)
-
-x = x / 255.0
-
-print("Division OK", flush=True)
-
-print(f"Test took {time.time()-start:.3f}s", flush=True)
 
 # ==========================================
 # Normalization constants
 # ==========================================
-mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+mean = torch.tensor([0.485, 0.456, 0.406]).view(3,1,1)
+std = torch.tensor([0.229,0.224,0.225]).view(3,1,1)
+
+ram("Startup complete")
 
 # ==========================================
-# Home page
+# Home Page
 # ==========================================
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET","POST"])
 def home():
 
     prediction = None
@@ -75,11 +76,11 @@ def home():
     if request.method == "POST":
 
         print("🔥 POST STARTED", flush=True)
+        ram("Request Start")
 
         try:
 
-            files = request.files
-            file = files.get("image")
+            file = request.files.get("image")
 
             if file is None:
                 return render_template(
@@ -90,7 +91,7 @@ def home():
             print(file.filename, flush=True)
 
             # -----------------------------
-            # Open Image
+            # Open image
             # -----------------------------
             start = time.time()
 
@@ -99,26 +100,32 @@ def home():
             print(f"Image opened ({time.time()-start:.2f}s)", flush=True)
             print("Original size:", image.size, flush=True)
 
+            ram("After Open")
+
             # -----------------------------
             # Resize
             # -----------------------------
             print("Resize...", flush=True)
 
-            image = image.resize((224, 224))
+            image = image.resize((224,224))
 
             print("Resize done", flush=True)
 
+            ram("After Resize")
+
             # -----------------------------
-            # Convert to NumPy
+            # NumPy
             # -----------------------------
             print("Converting to numpy...", flush=True)
 
-            arr = np.asarray(image, dtype=np.float32)
+            arr = np.asarray(image,dtype=np.float32)
 
             print("NumPy OK", flush=True)
 
+            ram("After NumPy")
+
             # -----------------------------
-            # Convert to Tensor
+            # Tensor
             # -----------------------------
             print("Creating tensor...", flush=True)
 
@@ -126,45 +133,61 @@ def home():
 
             print("Tensor OK", flush=True)
 
+            ram("After Tensor")
+
             # -----------------------------
-            # CHW
+            # Permute
             # -----------------------------
             print("Permuting...", flush=True)
 
-            image = image.permute(2, 0, 1).contiguous()
+            image = image.permute(2,0,1).contiguous()
 
             print("Permute OK", flush=True)
+
+            ram("After Permute")
+
+            # -----------------------------
+            # Float
+            # -----------------------------
+            print("Converting to float...", flush=True)
+
+            start = time.time()
+
+            image = image.float()
+
+            print(f"float() OK ({time.time()-start:.4f}s)", flush=True)
+
+            ram("After Float")
 
             # -----------------------------
             # Scale
             # -----------------------------
             print("Scaling...", flush=True)
 
-            print("dtype:", image.dtype, flush=True)
-            print("shape:", image.shape, flush=True)
-            print("contiguous:", image.is_contiguous(), flush=True)
-            print("device:", image.device, flush=True)
-
             start = time.time()
-            image = image.float()
-            print(f"float() OK ({time.time()-start:.4f}s)", flush=True)
 
-            start = time.time()
-            image.mul_(1.0 / 255.0)
-            print(f"mul_() OK ({time.time()-start:.4f}s)", flush=True)
+            image.mul_(1.0/255.0)
+
+            print(f"Scale OK ({time.time()-start:.4f}s)", flush=True)
+
+            ram("After Scale")
 
             # -----------------------------
             # Normalize
             # -----------------------------
             print("Normalizing...", flush=True)
 
-            image = (image - mean) / std
+            image = (image-mean)/std
 
             print("Normalize OK", flush=True)
+
+            ram("After Normalize")
 
             image = image.unsqueeze(0).to(device)
 
             print("Tensor ready", flush=True)
+
+            ram("After Unsqueeze")
 
             # -----------------------------
             # Model
@@ -178,23 +201,25 @@ def home():
 
             print(f"Model finished ({time.time()-start:.2f}s)", flush=True)
 
-            outputs = torch.flatten(outputs, start_dim=1)
+            ram("After Model")
 
-            probabilities = F.softmax(outputs, dim=1)
+            outputs = torch.flatten(outputs,start_dim=1)
 
-            confidence_tensor, predicted = torch.max(probabilities, 1)
+            probabilities = F.softmax(outputs,dim=1)
+
+            confidence_tensor,predicted = torch.max(probabilities,1)
 
             prediction = classes[predicted.item()]
-            confidence = round(confidence_tensor.item() * 100, 2)
+            confidence = round(confidence_tensor.item()*100,2)
 
-            print(f"Prediction: {prediction}", flush=True)
-            print(f"Confidence: {confidence}%", flush=True)
+            print("Prediction:",prediction,flush=True)
+            print("Confidence:",confidence,flush=True)
 
         except Exception as e:
 
             import traceback
 
-            print("ERROR:", e, flush=True)
+            print("ERROR:",e,flush=True)
             traceback.print_exc()
 
             error = str(e)
@@ -206,7 +231,6 @@ def home():
         error=error
     )
 
-
 # ==========================================
 # Run Website
 # ==========================================
@@ -214,9 +238,10 @@ if __name__ == "__main__":
 
     print("Starting Flask...", flush=True)
 
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT",5000))
 
     app.run(
         host="0.0.0.0",
         port=port
+    )
     )
