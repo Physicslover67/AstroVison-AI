@@ -162,16 +162,13 @@ def home():
             # -----------------------------
             # Scale
             # -----------------------------
-            print("Scaling...", flush=True)
+            print("Before clone", flush=True)
+            image = image.clone()
+            print("After clone", flush=True)
 
-            start = time.time()
-
-            image.mul_(1.0/255.0)
-
-            print(f"Scale OK ({time.time()-start:.4f}s)", flush=True)
-
-            ram("After Scale")
-
+            print("Before mul_", flush=True)
+            image.mul_(1.0 / 255.0)
+            print("After mul_", flush=True)
             # -----------------------------
             # Normalize
             # -----------------------------
