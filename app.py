@@ -140,9 +140,18 @@ def home():
             # -----------------------------
             print("Scaling...", flush=True)
 
-            image = image / 255.0
+            print("dtype:", image.dtype, flush=True)
+            print("shape:", image.shape, flush=True)
+            print("contiguous:", image.is_contiguous(), flush=True)
+            print("device:", image.device, flush=True)
 
-            print("Scale OK", flush=True)
+            start = time.time()
+            image = image.float()
+            print(f"float() OK ({time.time()-start:.4f}s)", flush=True)
+
+            start = time.time()
+            image.mul_(1.0 / 255.0)
+            print(f"mul_() OK ({time.time()-start:.4f}s)", flush=True)
 
             # -----------------------------
             # Normalize
