@@ -138,19 +138,13 @@ def home():
             # -----------------------------
             # Permute
             # -----------------------------
-            print("Permute only...", flush=True)
+            arr = np.transpose(arr, (2,0,1)).copy()
 
-            image = image.permute(2, 0, 1)
+            print("NumPy transpose OK", flush=True)
 
-            print("Permute OK", flush=True)
+            image = torch.from_numpy(arr)
 
-            print("Contiguous only...", flush=True)
-
-            image = image.contiguous()
-
-            print("Contiguous OK", flush=True)
-
-            ram("After Permute")
+            print("Torch tensor OK", flush=True)
 
             # -----------------------------
             # Float
