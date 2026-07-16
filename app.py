@@ -45,71 +45,79 @@ transform = transforms.Compose([
 # ========================================== 
 # Home page 
 # ========================================== 
-@app.route("/", methods=["GET", "POST"]) 
-def home(): 
-    prediction = None 
-    confidence = None 
-    
+# ==========================================
+# Home page
+# ==========================================
+@app.route("/", methods=["GET", "POST"])
+def home():
+    prediction = None
+    confidence = None
+
     if request.method == "POST":
-    print("🔥 POST STARTED", flush=True)
+        print("🔥 POST STARTED", flush=True)
 
-    print("A", flush=True)
+        print("A", flush=True)
 
-    files = request.files
+        files = request.files
 
-    print("B", flush=True)
+        print("B", flush=True)
+        print(files.keys(), flush=True)
 
-    print(files.keys(), flush=True)
+        print("C", flush=True)
 
-    print("C", flush=True)
+        file = files.get("image")
 
-    file = files.get("image")
+        print("D", flush=True)
 
-    print("D", flush=True)
+        if file is None:
+            print("❌ No image!", flush=True)
+            return render_template(
+                "index.html",
+                prediction=None,
+                confidence=None,
+                error="No image uploaded"
+            )
 
-    if file is None:
-        print("No image!", flush=True)
-        return render_template("index.html", error="No image uploaded")
+        print("E", flush=True)
+        print(file.filename, flush=True)
 
-    print("E", flush=True)
+        print("🧠 Running AI Benchmarks...", flush=True)
 
-    print(file.filename, flush=True)
+        # 1. Open image
+        start = time.time()
+        image = Image.open(file).convert("RGB")
+        print(f"2. Image opened ({time.time()-start:.2f}s)", flush=True)
 
-    print("🧠 Running AI Benchmarks...", flush=True)
+        # 2. Transform image
+        start = time.time()
+        tensor_image = transform(image).unsqueeze(0).to(device)
+        print(f"3. Image transformed ({time.time()-start:.2f}s)", flush=True)
 
-    # 1. Open the image safely once
-    start = time.time()
-    image = Image.open(file).convert("RGB")
-    print(f"2. Image opened ({time.time()-start:.2f}s)") 
-        
-        # 2. Transform the image
-        start = time.time() 
-        tensor_image = transform(image).unsqueeze(0).to(device) 
-        print(f"3. Image transformed ({time.time()-start:.2f}s)") 
-        
-        # 3. Model Inference
-        start = time.time() 
-        print("4. Starting model...") 
-        with torch.no_grad(): 
-            outputs = model(tensor_image) 
-        print(f"5. Model finished ({time.time()-start:.2f}s)") 
-        
-        # Post-processing
-        outputs = torch.flatten(outputs, start_dim=1) 
-        probabilities = F.softmax(outputs, dim=1) 
-        confidence_tensor, predicted = torch.max(probabilities, 1) 
-        
-        prediction = classes[predicted.item()] 
-        confidence = round(confidence_tensor.item() * 100, 2) 
-        
-        print(f"Prediction: {prediction}") 
-        print(f"Confidence: {confidence}%") 
-        
-    return render_template( 
-        "index.html", 
-        prediction=prediction, 
-        confidence=confidence 
-    ) 
+        # 3. Model inference
+        start = time.time()
+        print("4. Starting model...", flush=True)
+
+        with torch.no_grad():
+            outputs = model(tensor_image)
+
+        print(f"5. Model finished ({time.time()-start:.2f}s)", flush=True)
+
+        # 4. Post-processing
+        outputs = torch.flatten(outputs, start_dim=1)
+        probabilities = F.softmax(outputs, dim=1)
+        confidence_tensor, predicted = torch.max(probabilities, 1)
+
+        prediction = classes[predicted.item()]
+        confidence = round(confidence_tensor.item() * 100, 2)
+
+        print(f"Prediction: {prediction}", flush=True)
+        print(f"Confidence: {confidence}%", flush=True)
+
+    return render_template(
+        "index.html",
+        prediction=prediction,
+        confidence=confidence
+    )
 
 # ========================================== 
 # Run Website 
