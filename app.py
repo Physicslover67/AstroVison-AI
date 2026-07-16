@@ -98,22 +98,27 @@ def home():
             # -----------------------------
             # Transform
             # -----------------------------
-            print("Before transform", flush=True)
+            print("Resize...", flush=True)
+            image = transforms.Resize((224, 224))(image)
 
-            image = transform(image)
+            print("ToTensor...", flush=True)
+            image = transforms.ToTensor()(image)
 
-            print("After transform", flush=True)
+            print("Normalize...", flush=True)
+            image = transforms.Normalize(
+            [0.485, 0.456, 0.406],
+            [0.229, 0.224, 0.225]
+            )(image)
 
+            print("Unsqueeze...", flush=True)
             image = image.unsqueeze(0)
 
-            print("After unsqueeze", flush=True)
-
+            print("Move to device...", flush=True)
             image = image.to(device)
 
-            print("After to(device)", flush=True)
+            print("Transform complete!", flush=True)
 
             tensor_image = image
-
             # -----------------------------
             # Model
             # -----------------------------
