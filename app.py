@@ -131,7 +131,7 @@ def home():
             # -----------------------------
             print("Permuting...", flush=True)
 
-            image = image.permute(2, 0, 1)
+            image = image.permute(2, 0, 1).contiguous()
 
             print("Permute OK", flush=True)
 
