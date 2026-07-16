@@ -36,6 +36,25 @@ model.to(device)
 model.eval()
 
 print("✅ AI model loaded successfully!", flush=True)
+print("Torch version:", torch.__version__, flush=True)
+
+print("Testing torch...", flush=True)
+
+start = time.time()
+
+x = torch.rand((3, 224, 224))
+
+print("Created random tensor", flush=True)
+
+x = x.float()
+
+print("Converted to float", flush=True)
+
+x = x / 255.0
+
+print("Division OK", flush=True)
+
+print(f"Test took {time.time()-start:.3f}s", flush=True)
 
 # ==========================================
 # Normalization constants
