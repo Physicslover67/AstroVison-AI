@@ -7,6 +7,10 @@ from flask import Flask, render_template, request
 from PIL import Image
 
 import torch
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
+
+print("Threads:", torch.get_num_threads(), flush=True)
 import torch.nn.functional as F
 
 from model import create_model
