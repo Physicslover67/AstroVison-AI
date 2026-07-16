@@ -51,20 +51,36 @@ def home():
     confidence = None 
     
     if request.method == "POST":
-        print("🔥 POST STARTED", flush=True) 
-        
-        # Safe check to see if the file exists in the request
-        if "image" not in request.files or request.files["image"].filename == "":
-            return render_template("index.html", error="No image uploaded")
-            
-        file = request.files["image"] 
-        
-        print("🧠 Running AI Benchmarks...") 
-        
-        # 1. Open the image safely once
-        start = time.time() 
-        image = Image.open(file).convert("RGB") 
-        print(f"2. Image opened ({time.time()-start:.2f}s)") 
+    print("🔥 POST STARTED", flush=True)
+
+    print("A", flush=True)
+
+    files = request.files
+
+    print("B", flush=True)
+
+    print(files.keys(), flush=True)
+
+    print("C", flush=True)
+
+    file = files.get("image")
+
+    print("D", flush=True)
+
+    if file is None:
+        print("No image!", flush=True)
+        return render_template("index.html", error="No image uploaded")
+
+    print("E", flush=True)
+
+    print(file.filename, flush=True)
+
+    print("🧠 Running AI Benchmarks...", flush=True)
+
+    # 1. Open the image safely once
+    start = time.time()
+    image = Image.open(file).convert("RGB")
+    print(f"2. Image opened ({time.time()-start:.2f}s)") 
         
         # 2. Transform the image
         start = time.time() 
