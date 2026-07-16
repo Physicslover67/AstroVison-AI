@@ -1,10 +1,13 @@
 import os
 import time
+import numpy as np
+
 from flask import Flask, render_template, request
 from PIL import Image
+
 import torch
 import torch.nn.functional as F
-from torchvision import transforms
+
 from model import create_model
 
 # ==========================================
@@ -23,6 +26,7 @@ device = torch.device("cpu")
 print("Loading model...", flush=True)
 
 checkpoint = torch.load("astro_model_v2.pth", map_location=device)
+
 classes = checkpoint["classes"]
 num_classes = checkpoint["num_classes"]
 
@@ -34,16 +38,10 @@ model.eval()
 print("✅ AI model loaded successfully!", flush=True)
 
 # ==========================================
-# Image preprocessing
+# Normalization constants
 # ==========================================
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        [0.485, 0.456, 0.406],
-        [0.229, 0.224, 0.225]
-    )
-])
+mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
 
 # ==========================================
 # Home page
@@ -61,79 +59,97 @@ def home():
 
         try:
 
-            print("A", flush=True)
-
             files = request.files
-
-            print("B", flush=True)
-            print(files.keys(), flush=True)
-
-            print("C", flush=True)
-
             file = files.get("image")
 
-            print("D", flush=True)
-
             if file is None:
-                print("❌ No image uploaded", flush=True)
                 return render_template(
                     "index.html",
-                    prediction=None,
-                    confidence=None,
                     error="No image uploaded"
                 )
 
-            print("E", flush=True)
             print(file.filename, flush=True)
 
             # -----------------------------
-            # Open image
+            # Open Image
             # -----------------------------
             start = time.time()
 
             image = Image.open(file).convert("RGB")
 
-            print(f"2. Image opened ({time.time()-start:.2f}s)", flush=True)
+            print(f"Image opened ({time.time()-start:.2f}s)", flush=True)
+            print("Original size:", image.size, flush=True)
 
             # -----------------------------
-            # Transform
+            # Resize
             # -----------------------------
             print("Resize...", flush=True)
-            image = transforms.Resize((224, 224))(image)
 
-            print("ToTensor...", flush=True)
-            image = transforms.ToTensor()(image)
+            image = image.resize((224, 224))
 
-            print("Normalize...", flush=True)
-            image = transforms.Normalize(
-            [0.485, 0.456, 0.406],
-            [0.229, 0.224, 0.225]
-            )(image)
+            print("Resize done", flush=True)
 
-            print("Unsqueeze...", flush=True)
-            image = image.unsqueeze(0)
+            # -----------------------------
+            # Convert to NumPy
+            # -----------------------------
+            print("Converting to numpy...", flush=True)
 
-            print("Move to device...", flush=True)
-            image = image.to(device)
+            arr = np.asarray(image, dtype=np.float32)
 
-            print("Transform complete!", flush=True)
+            print("NumPy OK", flush=True)
 
-            tensor_image = image
+            # -----------------------------
+            # Convert to Tensor
+            # -----------------------------
+            print("Creating tensor...", flush=True)
+
+            image = torch.from_numpy(arr)
+
+            print("Tensor OK", flush=True)
+
+            # -----------------------------
+            # CHW
+            # -----------------------------
+            print("Permuting...", flush=True)
+
+            image = image.permute(2, 0, 1)
+
+            print("Permute OK", flush=True)
+
+            # -----------------------------
+            # Scale
+            # -----------------------------
+            print("Scaling...", flush=True)
+
+            image = image / 255.0
+
+            print("Scale OK", flush=True)
+
+            # -----------------------------
+            # Normalize
+            # -----------------------------
+            print("Normalizing...", flush=True)
+
+            image = (image - mean) / std
+
+            print("Normalize OK", flush=True)
+
+            image = image.unsqueeze(0).to(device)
+
+            print("Tensor ready", flush=True)
+
             # -----------------------------
             # Model
             # -----------------------------
-            print("Before model()", flush=True)
+            print("Running model...", flush=True)
 
             start = time.time()
 
             with torch.no_grad():
-                outputs = model(tensor_image)
+                outputs = model(image)
 
-            print(f"After model() ({time.time()-start:.2f}s)", flush=True)
+            print(f"Model finished ({time.time()-start:.2f}s)", flush=True)
 
-            # -----------------------------
-            # Softmax
-            # -----------------------------
             outputs = torch.flatten(outputs, start_dim=1)
 
             probabilities = F.softmax(outputs, dim=1)
@@ -148,9 +164,9 @@ def home():
 
         except Exception as e:
 
-            print("❌ ERROR:", e, flush=True)
-
             import traceback
+
+            print("ERROR:", e, flush=True)
             traceback.print_exc()
 
             error = str(e)
@@ -162,12 +178,13 @@ def home():
         error=error
     )
 
+
 # ==========================================
 # Run Website
 # ==========================================
 if __name__ == "__main__":
 
-    print("🚀 Starting Flask server...", flush=True)
+    print("Starting Flask...", flush=True)
 
     port = int(os.environ.get("PORT", 5000))
 
