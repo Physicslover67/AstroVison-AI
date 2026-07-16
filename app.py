@@ -138,11 +138,17 @@ def home():
             # -----------------------------
             # Permute
             # -----------------------------
-            print("Permuting...", flush=True)
+            print("Permute only...", flush=True)
 
-            image = image.permute(2,0,1).contiguous()
+            image = image.permute(2, 0, 1)
 
             print("Permute OK", flush=True)
+
+            print("Contiguous only...", flush=True)
+
+            image = image.contiguous()
+
+            print("Contiguous OK", flush=True)
 
             ram("After Permute")
 
