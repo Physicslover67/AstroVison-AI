@@ -51,7 +51,7 @@ def home():
     confidence = None 
     
     if request.method == "POST":
-    print("🔥 POST STARTED", flush=True) 
+        print("🔥 POST STARTED", flush=True) 
         
         # Safe check to see if the file exists in the request
         if "image" not in request.files or request.files["image"].filename == "":
